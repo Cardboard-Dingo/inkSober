@@ -93,11 +93,11 @@ class DashboardViewModel(
         }
     }
 
-    fun resetSobrietyDate(substanceId: Long) {
+    fun resetSobrietyDate(substanceId: Long, customStartDateMillis: Long = System.currentTimeMillis()) {
         viewModelScope.launch {
             val substance = substanceRepository.getSubstanceByIdOneShot(substanceId)
             if (substance != null) {
-                val updated = substance.copy(startDateMillis = System.currentTimeMillis())
+                val updated = substance.copy(startDateMillis = customStartDateMillis)
                 substanceRepository.updateSubstance(updated)
             }
         }
@@ -106,6 +106,26 @@ class DashboardViewModel(
     fun setActiveSubstance(substanceId: Long) {
         viewModelScope.launch {
             userPreferencesRepository.setActiveSubstanceId(substanceId)
+        }
+    }
+
+    fun addSubstance(
+        name: String,
+        category: String,
+        icon: String,
+        startDateMillis: Long,
+        initialNote: String
+    ) {
+        viewModelScope.launch {
+            val newSubstance = SubstanceEntity(
+                name = name,
+                startDateMillis = startDateMillis,
+                category = category,
+                icon = icon,
+                initialNote = initialNote
+            )
+            val id = substanceRepository.insertSubstance(newSubstance)
+            userPreferencesRepository.setActiveSubstanceId(id)
         }
     }
 }

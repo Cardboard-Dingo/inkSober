@@ -8,7 +8,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Notes
 import androidx.compose.material.icons.rounded.*
@@ -17,20 +19,27 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import app.unpolished.inksober.R
 import app.unpolished.inksober.data.local.entity.RecoveryQuoteEntity
 import app.unpolished.inksober.data.local.entity.SubstanceEntity
 import app.unpolished.inksober.domain.model.Milestone
+import app.unpolished.inksober.domain.model.PresetSubstance
 import app.unpolished.inksober.domain.model.SobrietyDuration
 import app.unpolished.inksober.ui.components.*
+import app.unpolished.inksober.ui.substances.AddEditSubstanceDialog
+import app.unpolished.inksober.ui.substances.EInkExactDateTimePicker
+import app.unpolished.inksober.ui.substances.QuickTimePresetRow
 import app.unpolished.inksober.ui.theme.InkSoberTheme
+import java.text.SimpleDateFormat
+import java.util.*
 
 @Composable
 fun DashboardScreen(
@@ -58,46 +67,25 @@ fun DashboardScreen(
     )
 
     if (showResetDialog && uiState.activeSubstance != null) {
-        AlertDialog(
-            onDismissRequest = { showResetDialog = false },
-            title = {
-                Text(
-                    text = "Reset Sobriety Date?",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Text(
-                    text = "This will update your start date for '${uiState.activeSubstance?.name}' to right now. This action cannot be undone.",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-            },
-            confirmButton = {
-                EInkButton(
-                    onClick = {
-                        uiState.activeSubstance?.id?.let { viewModel.resetSobrietyDate(it) }
-                        showResetDialog = false
-                    }
-                ) {
-                    Text("Reset Date", fontWeight = FontWeight.Bold)
+        ResetSobrietyDateDialog(
+            substanceName = uiState.activeSubstance?.name ?: "Sobriety",
+            currentStartDateMillis = uiState.activeSubstance?.startDateMillis ?: System.currentTimeMillis(),
+            onDismiss = { showResetDialog = false },
+            onConfirmReset = { newStartMillis ->
+                uiState.activeSubstance?.id?.let { id ->
+                    viewModel.resetSobrietyDate(id, newStartMillis)
                 }
-            },
-            dismissButton = {
-                EInkOutlinedButton(onClick = { showResetDialog = false }) {
-                    Text("Cancel")
-                }
-            },
-            containerColor = MaterialTheme.colorScheme.surface,
-            shape = RoundedCornerShape(6.dp)
+                showResetDialog = false
+            }
         )
     }
 
     if (showAddSubstanceDialog) {
-        AddSubstanceQuickDialog(
+        AddEditSubstanceDialog(
+            initialSubstance = null,
             onDismiss = { showAddSubstanceDialog = false },
-            onConfirm = {
-                onNavigateToSubstances()
+            onConfirm = { name, category, icon, startDateMillis, notes ->
+                viewModel.addSubstance(name, category, icon, startDateMillis, notes)
                 showAddSubstanceDialog = false
             }
         )
@@ -116,6 +104,159 @@ fun DashboardScreen(
 }
 
 @Composable
+fun ResetSobrietyDateDialog(
+    substanceName: String,
+    currentStartDateMillis: Long,
+    onDismiss: () -> Unit,
+    onConfirmReset: (newStartDateMillis: Long) -> Unit
+) {
+    val initialCalendar = remember(currentStartDateMillis) {
+        Calendar.getInstance().apply { timeInMillis = currentStartDateMillis }
+    }
+
+    var selectedYear by remember { mutableIntStateOf(initialCalendar.get(Calendar.YEAR)) }
+    var selectedMonth by remember { mutableIntStateOf(initialCalendar.get(Calendar.MONTH) + 1) }
+    var selectedDay by remember { mutableIntStateOf(initialCalendar.get(Calendar.DAY_OF_MONTH)) }
+    var selectedHour by remember { mutableIntStateOf(initialCalendar.get(Calendar.HOUR_OF_DAY)) }
+    var selectedMinute by remember { mutableIntStateOf(initialCalendar.get(Calendar.MINUTE)) }
+
+    val calculatedMillis by remember(selectedYear, selectedMonth, selectedDay, selectedHour, selectedMinute) {
+        derivedStateOf {
+            Calendar.getInstance().apply {
+                set(Calendar.YEAR, selectedYear)
+                set(Calendar.MONTH, selectedMonth - 1)
+                set(Calendar.DAY_OF_MONTH, maxOf(1, minOf(selectedDay, getActualMaximum(Calendar.DAY_OF_MONTH))))
+                set(Calendar.HOUR_OF_DAY, selectedHour)
+                set(Calendar.MINUTE, selectedMinute)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+        }
+    }
+
+    val formattedSelectedDate = remember(calculatedMillis) {
+        val sdf = SimpleDateFormat("EEE, MMM dd, yyyy 'at' HH:mm", Locale.getDefault())
+        sdf.format(Date(calculatedMillis))
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .padding(vertical = 8.dp)
+                .border(1.5.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp)),
+            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(12.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Reset / Set Start Date",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
+                        Icon(imageVector = Icons.Rounded.Close, contentDescription = "Close")
+                    }
+                }
+
+                Text(
+                    text = "Select exact past date & time when your sobriety for '$substanceName' started:",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                QuickTimePresetRow(
+                    onSelectPreset = { daysAgo ->
+                        val cal = Calendar.getInstance()
+                        if (daysAgo > 0) {
+                            cal.add(Calendar.DAY_OF_YEAR, -daysAgo)
+                        }
+                        selectedYear = cal.get(Calendar.YEAR)
+                        selectedMonth = cal.get(Calendar.MONTH) + 1
+                        selectedDay = cal.get(Calendar.DAY_OF_MONTH)
+                        selectedHour = cal.get(Calendar.HOUR_OF_DAY)
+                        selectedMinute = cal.get(Calendar.MINUTE)
+                    }
+                )
+
+                EInkExactDateTimePicker(
+                    year = selectedYear,
+                    month = selectedMonth,
+                    day = selectedDay,
+                    hour = selectedHour,
+                    minute = selectedMinute,
+                    onYearChange = { selectedYear = it },
+                    onMonthChange = { selectedMonth = it },
+                    onDayChange = { selectedDay = it },
+                    onHourChange = { selectedHour = it },
+                    onMinuteChange = { selectedMinute = it }
+                )
+
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.5.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp)),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Schedule,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "New Start Time: $formattedSelectedDate",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    EInkOutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Cancel")
+                    }
+
+                    EInkButton(
+                        onClick = {
+                            onConfirmReset(calculatedMillis)
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Set Start Date", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun DashboardContent(
     uiState: DashboardUiState,
     onCycleQuote: () -> Unit,
@@ -127,6 +268,13 @@ fun DashboardContent(
     modifier: Modifier = Modifier
 ) {
     var expandedDropdown by remember { mutableStateOf(false) }
+
+    val categoryIcon = remember(uiState.activeSubstance?.icon, uiState.activeSubstance?.category) {
+        PresetSubstance.getIconForSubstance(
+            uiState.activeSubstance?.icon ?: "",
+            uiState.activeSubstance?.category ?: ""
+        )
+    }
 
     LazyColumn(
         modifier = modifier
@@ -151,8 +299,8 @@ fun DashboardContent(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Icon(
-                            painter = painterResource(id = R.drawable.ic_tree_of_life),
-                            contentDescription = "Tree of Life Emblem",
+                            imageVector = categoryIcon,
+                            contentDescription = uiState.activeSubstance?.name ?: "Substance Icon",
                             modifier = Modifier.size(32.dp),
                             tint = MaterialTheme.colorScheme.onSurface
                         )
@@ -261,7 +409,7 @@ fun DashboardContent(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Reset", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text("Reset Date", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
 
                 EInkOutlinedButton(
@@ -548,32 +696,6 @@ fun MilestoneCard(milestone: Milestone) {
             }
         }
     }
-}
-
-@Composable
-fun AddSubstanceQuickDialog(
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add Substance", fontWeight = FontWeight.Bold) },
-        text = {
-            Text("Navigate to Substances screen to add and manage your tracked habits.")
-        },
-        confirmButton = {
-            EInkButton(onClick = onConfirm) {
-                Text("Go to Substances")
-            }
-        },
-        dismissButton = {
-            EInkOutlinedButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
-        containerColor = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(6.dp)
-    )
 }
 
 @Composable

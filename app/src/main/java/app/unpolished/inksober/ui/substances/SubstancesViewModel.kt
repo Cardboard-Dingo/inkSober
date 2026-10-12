@@ -54,12 +54,19 @@ class SubstancesViewModel(
         }
     }
 
-    fun addSubstance(name: String, startDateMillis: Long, category: String, initialNote: String) {
+    fun addSubstance(
+        name: String,
+        startDateMillis: Long,
+        category: String,
+        icon: String = "tune",
+        initialNote: String
+    ) {
         viewModelScope.launch {
             val newSubstance = SubstanceEntity(
                 name = name,
                 startDateMillis = startDateMillis,
                 category = category,
+                icon = icon,
                 initialNote = initialNote
             )
             val id = substanceRepository.insertSubstance(newSubstance)

@@ -2,7 +2,6 @@ package app.unpolished.inksober.ui.substances
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -17,6 +16,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.unpolished.inksober.data.local.entity.SubstanceEntity
+import app.unpolished.inksober.domain.model.PresetSubstance
 import app.unpolished.inksober.domain.model.SobrietyDuration
 import app.unpolished.inksober.ui.components.*
 import app.unpolished.inksober.ui.theme.InkSoberTheme
@@ -44,27 +44,26 @@ fun SubstancesScreen(
     )
 
     if (showAddDialog) {
-        SubstanceFormDialog(
-            title = "Add Substance",
+        AddEditSubstanceDialog(
             initialSubstance = null,
             onDismiss = { showAddDialog = false },
-            onConfirm = { name, category, startDateMillis, notes ->
-                viewModel.addSubstance(name, startDateMillis, category, notes)
+            onConfirm = { name, category, icon, startDateMillis, notes ->
+                viewModel.addSubstance(name, startDateMillis, category, icon, notes)
                 showAddDialog = false
             }
         )
     }
 
     substanceToEdit?.let { substance ->
-        SubstanceFormDialog(
-            title = "Edit Substance",
+        AddEditSubstanceDialog(
             initialSubstance = substance,
             onDismiss = { substanceToEdit = null },
-            onConfirm = { name, category, startDateMillis, notes ->
+            onConfirm = { name, category, icon, startDateMillis, notes ->
                 viewModel.updateSubstance(
                     substance.copy(
                         name = name,
                         category = category,
+                        icon = icon,
                         startDateMillis = startDateMillis,
                         initialNote = notes
                     )
@@ -215,6 +214,9 @@ fun SubstanceItemCard(
     val startDateStr = remember(item.entity.startDateMillis) {
         dateFormat.format(Date(item.entity.startDateMillis))
     }
+    val icon = remember(item.entity.icon, item.entity.category) {
+        PresetSubstance.getIconForSubstance(item.entity.icon, item.entity.category)
+    }
 
     EInkCard(
         modifier = Modifier.fillMaxWidth(),
@@ -227,6 +229,12 @@ fun SubstanceItemCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = item.entity.name,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = item.entity.name,
                         style = MaterialTheme.typography.titleLarge,
@@ -325,115 +333,6 @@ fun SubstanceItemCard(
     }
 }
 
-@Composable
-fun SubstanceFormDialog(
-    title: String,
-    initialSubstance: SubstanceEntity?,
-    onDismiss: () -> Unit,
-    onConfirm: (String, String, Long, String) -> Unit
-) {
-    var name by remember { mutableStateOf(initialSubstance?.name ?: "") }
-    var category by remember { mutableStateOf(initialSubstance?.category ?: "General") }
-    var daysAgoText by remember { mutableStateOf("0") }
-    var hoursAgoText by remember { mutableStateOf("0") }
-    var notes by remember { mutableStateOf(initialSubstance?.initialNote ?: "") }
-
-    val categories = listOf("General", "Alcohol", "Smoking", "Caffeine", "Digital", "Sugar", "Custom")
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(text = title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        },
-        text = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                EInkOutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Substance / Habit Name") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Text(
-                    text = "Category",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    items(categories) { cat ->
-                        EInkFilterChip(
-                            selected = category == cat,
-                            onClick = { category = cat },
-                            label = cat
-                        )
-                    }
-                }
-
-                Text(
-                    text = "Sobriety Start Time",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    EInkOutlinedTextField(
-                        value = daysAgoText,
-                        onValueChange = { if (it.all { char -> char.isDigit() }) daysAgoText = it },
-                        label = { Text("Days Ago") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                    EInkOutlinedTextField(
-                        value = hoursAgoText,
-                        onValueChange = { if (it.all { char -> char.isDigit() }) hoursAgoText = it },
-                        label = { Text("Hours Ago") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                EInkOutlinedTextField(
-                    value = notes,
-                    onValueChange = { notes = it },
-                    label = { Text("Initial Reflection / Note") },
-                    maxLines = 3,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            EInkButton(
-                enabled = name.isNotBlank(),
-                onClick = {
-                    val daysAgo = daysAgoText.toLongOrNull() ?: 0L
-                    val hoursAgo = hoursAgoText.toLongOrNull() ?: 0L
-                    val startMillis = System.currentTimeMillis() -
-                            (daysAgo * 86400000L) - (hoursAgo * 3600000L)
-                    onConfirm(name.trim(), category, startMillis, notes.trim())
-                }
-            ) {
-                Text("Save", fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            EInkOutlinedButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
-        containerColor = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(6.dp)
-    )
-}
-
 @Preview(showBackground = true)
 @Composable
 fun SubstancesPreview() {
@@ -442,12 +341,12 @@ fun SubstancesPreview() {
             uiState = SubstancesUiState(
                 substances = listOf(
                     SubstanceItem(
-                        entity = SubstanceEntity(1, "Alcohol", System.currentTimeMillis() - 86400000L * 5, "Alcohol"),
+                        entity = SubstanceEntity(1, "Alcohol", System.currentTimeMillis() - 86400000L * 5, "Substances", "local_bar"),
                         duration = SobrietyDuration(5, 2, 30, 10),
                         isPrimary = true
                     ),
                     SubstanceItem(
-                        entity = SubstanceEntity(2, "Nicotine", System.currentTimeMillis() - 86400000L * 12, "Smoking"),
+                        entity = SubstanceEntity(2, "Nicotine", System.currentTimeMillis() - 86400000L * 12, "Substances", "smoking_rooms"),
                         duration = SobrietyDuration(12, 10, 15, 0),
                         isPrimary = false
                     )

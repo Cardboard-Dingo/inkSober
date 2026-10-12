@@ -13,8 +13,8 @@ android {
 
     defaultConfig {
         applicationId = "app.unpolished.inksober"
-        minSdk = 30
-        targetSdk = 37
+        minSdk = 31
+        targetSdk = 36
         versionCode = 1
         versionName = "0.7"
 
@@ -73,7 +73,6 @@ dependencies {
     implementation(libs.logging.interceptor)
     implementation(libs.moshi.kotlin)
     implementation(libs.okhttp)
-    implementation(libs.play.services.location)
     implementation(libs.retrofit)
     testImplementation(libs.androidx.core)
     testImplementation(libs.androidx.junit)
