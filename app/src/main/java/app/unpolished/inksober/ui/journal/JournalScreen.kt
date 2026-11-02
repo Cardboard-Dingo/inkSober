@@ -1,13 +1,19 @@
 package app.unpolished.inksober.ui.journal
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
@@ -18,6 +24,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import app.unpolished.inksober.data.local.entity.JournalEntryEntity
 import app.unpolished.inksober.data.local.entity.SubstanceEntity
 import app.unpolished.inksober.ui.components.*
@@ -57,7 +66,7 @@ fun JournalScreen(
 
     if (showAddDialog) {
         JournalFormDialog(
-            title = "New Journal Entry",
+            dialogTitle = "New Reflection Note",
             initialEntry = null,
             substances = uiState.substances,
             defaultSubstanceId = preselectedSubstanceId,
@@ -71,7 +80,7 @@ fun JournalScreen(
 
     entryToEdit?.let { entry ->
         JournalFormDialog(
-            title = "Edit Journal Entry",
+            dialogTitle = "Edit Reflection",
             initialEntry = entry,
             substances = uiState.substances,
             defaultSubstanceId = entry.substanceId,
@@ -92,51 +101,108 @@ fun JournalScreen(
 
     entryToView?.let { entry ->
         val substanceName = uiState.substances.find { it.id == entry.substanceId }?.name ?: "General"
-        val dateFormat = remember { SimpleDateFormat("MMMM dd, yyyy HH:mm", Locale.getDefault()) }
+        val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
 
-        AlertDialog(
+        Dialog(
             onDismissRequest = { entryToView = null },
-            title = {
-                Column {
-                    Text(text = entry.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "${dateFormat.format(Date(entry.timestampMillis))} • Mood: ${entry.mood} • Substance: $substanceName",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                }
-            },
-            text = {
-                Text(
-                    text = entry.body,
-                    style = MaterialTheme.typography.bodyLarge
-                )
-            },
-            confirmButton = {
-                EInkButton(onClick = { entryToView = null }) {
-                    Text("Close")
-                }
-            },
-            dismissButton = {
-                EInkOutlinedButton(
-                    onClick = {
-                        entryToEdit = entry
-                        entryToView = null
-                    }
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(0.95f)
+                    .padding(vertical = 4.dp)
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(10.dp)),
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.surface
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(12.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Edit")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = entry.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        IconButton(onClick = { entryToView = null }, modifier = Modifier.size(36.dp)) {
+                            Icon(imageVector = Icons.Rounded.Close, contentDescription = "Close")
+                        }
+                    }
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = entry.mood,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+
+                        Text(
+                            text = "${dateFormat.format(Date(entry.timestampMillis))} • $substanceName",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outline)
+
+                    Text(
+                        text = entry.body,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        EInkButton(
+                            onClick = {
+                                entryToEdit = entry
+                                entryToView = null
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Edit Reflection", fontWeight = FontWeight.Bold)
+                        }
+
+                        EInkOutlinedButton(
+                            onClick = { entryToView = null },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Close")
+                        }
+                    }
                 }
-            },
-            containerColor = MaterialTheme.colorScheme.surface,
-            shape = RoundedCornerShape(6.dp)
-        )
+            }
+        }
     }
 
     entryToDelete?.let { entry ->
         AlertDialog(
             onDismissRequest = { entryToDelete = null },
-            title = { Text("Delete Entry?", fontWeight = FontWeight.Bold) },
+            title = { Text("Delete Reflection?", fontWeight = FontWeight.Bold) },
             text = { Text("Are you sure you want to delete '${entry.title}'?") },
             confirmButton = {
                 EInkButton(
@@ -153,7 +219,8 @@ fun JournalScreen(
                     Text("Cancel")
                 }
             },
-            shape = RoundedCornerShape(6.dp)
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(8.dp)
         )
     }
 }
@@ -169,122 +236,110 @@ fun JournalContent(
     onDeleteClick: (JournalEntryEntity) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val moods = listOf("All", "Peaceful", "Strong", "Struggling", "Grateful", "Grounded")
+    val moods = listOf("All", "Grateful", "Strong", "Peaceful", "Struggling", "Grounded", "Hopeful")
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        floatingActionButton = {
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        // Top Header Action Button
+        item {
             EInkButton(
                 onClick = onAddClick,
-                shape = RoundedCornerShape(24.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Add,
-                    contentDescription = "New Entry",
-                    modifier = Modifier.size(20.dp)
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("Log Entry", fontWeight = FontWeight.Bold)
+                Text("Log Reflection Note", fontWeight = FontWeight.Bold)
             }
         }
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            item {
-                Text(
-                    text = "DAILY REFLECTIONS",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
 
-            // Search Bar
-            item {
-                EInkOutlinedTextField(
-                    value = uiState.searchQuery,
-                    onValueChange = onSearchQueryChange,
-                    placeholder = { Text("Search reflections...") },
-                    leadingIcon = {
-                        Icon(imageVector = Icons.Rounded.Search, contentDescription = "Search")
-                    },
-                    trailingIcon = {
-                        if (uiState.searchQuery.isNotEmpty()) {
-                            IconButton(
-                                onClick = { onSearchQueryChange("") },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Icon(imageVector = Icons.Rounded.Close, contentDescription = "Clear")
-                            }
+        // Search Bar
+        item {
+            EInkOutlinedTextField(
+                value = uiState.searchQuery,
+                onValueChange = onSearchQueryChange,
+                placeholder = { Text("Search reflections...", fontSize = 12.sp) },
+                leadingIcon = {
+                    Icon(imageVector = Icons.Rounded.Search, contentDescription = "Search", modifier = Modifier.size(18.dp))
+                },
+                trailingIcon = {
+                    if (uiState.searchQuery.isNotEmpty()) {
+                        IconButton(
+                            onClick = { onSearchQueryChange("") },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(imageVector = Icons.Rounded.Close, contentDescription = "Clear", modifier = Modifier.size(18.dp))
                         }
-                    },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+                    }
+                },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
 
-            // Mood Filter Chips
+        // Mood Filter Chips Row
+        item {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(moods) { mood ->
+                    val isSelected = if (mood == "All") uiState.selectedMoodFilter == null else uiState.selectedMoodFilter == mood
+                    EInkFilterChip(
+                        selected = isSelected,
+                        onClick = {
+                            if (mood == "All") onMoodFilterSelect(null) else onMoodFilterSelect(mood)
+                        },
+                        label = mood
+                    )
+                }
+            }
+        }
+
+        if (uiState.filteredEntries.isEmpty()) {
             item {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.fillMaxWidth()
+                EInkCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
                 ) {
-                    items(moods) { mood ->
-                        val isSelected = if (mood == "All") uiState.selectedMoodFilter == null else uiState.selectedMoodFilter == mood
-                        EInkFilterChip(
-                            selected = isSelected,
-                            onClick = {
-                                if (mood == "All") onMoodFilterSelect(null) else onMoodFilterSelect(mood)
-                            },
-                            label = mood
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "No reflections logged.",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Tap 'Log Reflection Note' above to keep track of your thoughts and moods.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             }
-
-            if (uiState.filteredEntries.isEmpty()) {
-                item {
-                    EInkCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 16.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "No reflection entries found.",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = "Log your daily progress, thoughts, and moods to keep building momentum.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            } else {
-                items(uiState.filteredEntries) { entry ->
-                    val substanceName = uiState.substances.find { it.id == entry.substanceId }?.name ?: "General"
-                    JournalEntryCard(
-                        entry = entry,
-                        substanceName = substanceName,
-                        onClick = { onEntryClick(entry) },
-                        onEditClick = { onEditClick(entry) },
-                        onDeleteClick = { onDeleteClick(entry) }
-                    )
-                }
+        } else {
+            items(uiState.filteredEntries) { entry ->
+                val substanceName = uiState.substances.find { it.id == entry.substanceId }?.name ?: "General"
+                JournalEntryCard(
+                    entry = entry,
+                    substanceName = substanceName,
+                    onClick = { onEntryClick(entry) },
+                    onEditClick = { onEditClick(entry) },
+                    onDeleteClick = { onDeleteClick(entry) }
+                )
             }
         }
     }
@@ -298,7 +353,7 @@ fun JournalEntryCard(
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
-    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()) }
+    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
     val dateStr = remember(entry.timestampMillis) { dateFormat.format(Date(entry.timestampMillis)) }
 
     EInkCard(
@@ -320,64 +375,68 @@ fun JournalEntryCard(
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = "$dateStr • Mood: ${entry.mood}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            text = entry.mood.uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                        )
+                    }
+
+                    Text(
+                        text = "$dateStr • $substanceName",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
-            Surface(
-                color = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                shape = RoundedCornerShape(4.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-            ) {
-                Text(
-                    text = substanceName.uppercase(),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                )
+            Row {
+                IconButton(onClick = onEditClick, modifier = Modifier.size(36.dp)) {
+                    Icon(imageVector = Icons.Rounded.Edit, contentDescription = "Edit", modifier = Modifier.size(18.dp))
+                }
+                IconButton(onClick = onDeleteClick, modifier = Modifier.size(36.dp)) {
+                    Icon(imageVector = Icons.Rounded.Delete, contentDescription = "Delete", modifier = Modifier.size(18.dp))
+                }
             }
         }
 
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = entry.body,
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 3,
-            overflow = TextOverflow.Ellipsis
-        )
-
-        Spacer(modifier = Modifier.height(6.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
-        ) {
-            IconButton(onClick = onEditClick, modifier = Modifier.size(48.dp)) {
-                Icon(imageVector = Icons.Rounded.Edit, contentDescription = "Edit", modifier = Modifier.size(20.dp))
-            }
-            Spacer(modifier = Modifier.width(4.dp))
-            IconButton(onClick = onDeleteClick, modifier = Modifier.size(48.dp)) {
-                Icon(imageVector = Icons.Rounded.Delete, contentDescription = "Delete", modifier = Modifier.size(20.dp))
-            }
+        if (entry.body.isNotBlank()) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = entry.body,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
 
 @Composable
 fun JournalFormDialog(
-    title: String,
+    dialogTitle: String,
     initialEntry: JournalEntryEntity?,
     substances: List<SubstanceEntity>,
     defaultSubstanceId: Long?,
     onDismiss: () -> Unit,
-    onConfirm: (String, String, String, Long) -> Unit
+    onConfirm: (title: String, body: String, mood: String, substanceId: Long) -> Unit
 ) {
     var titleText by remember { mutableStateOf(initialEntry?.title ?: "") }
     var bodyText by remember { mutableStateOf(initialEntry?.body ?: "") }
-    var selectedMood by remember { mutableStateOf(initialEntry?.mood ?: "Peaceful") }
+    var selectedMood by remember { mutableStateOf(initialEntry?.mood ?: "Grateful") }
 
     val initialSubstanceId = initialEntry?.substanceId
         ?: defaultSubstanceId
@@ -386,56 +445,135 @@ fun JournalFormDialog(
 
     var selectedSubstanceId by remember { mutableLongStateOf(initialSubstanceId) }
 
-    val moodOptions = listOf("Peaceful", "Strong", "Struggling", "Grateful", "Grounded")
+    val moodOptions = listOf("Grateful", "Strong", "Peaceful", "Struggling", "Grounded", "Hopeful")
 
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text(text = title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        },
-        text = {
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.96f)
+                .padding(vertical = 4.dp)
+                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(10.dp)),
+            shape = RoundedCornerShape(10.dp),
+            color = MaterialTheme.colorScheme.surface
+        ) {
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .padding(10.dp)
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = dialogTitle,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(36.dp)) {
+                        Icon(imageVector = Icons.Rounded.Close, contentDescription = "Close")
+                    }
+                }
+
+                HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outline)
+
+                // 1. Reflection Title / Short Note
                 EInkOutlinedTextField(
                     value = titleText,
                     onValueChange = { titleText = it },
-                    label = { Text("Title") },
+                    label = { Text("Reflection / Quick Note") },
+                    placeholder = { Text("e.g. Day 30 — Feeling energized!") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Text(text = "Mood", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    items(moodOptions) { mood ->
-                        EInkFilterChip(
-                            selected = selectedMood == mood,
-                            onClick = { selectedMood = mood },
-                            label = mood
-                        )
+                // 2. Mood Grid (2x3 Grid)
+                Text(
+                    text = "MOOD",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(85.dp)
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(4.dp)
+                ) {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(3),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(moodOptions) { mood ->
+                            val isSelected = selectedMood == mood
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(34.dp)
+                                    .clickable { selectedMood = mood },
+                                shape = RoundedCornerShape(4.dp),
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+                                contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                                border = BorderStroke(
+                                    width = if (isSelected) 1.5.dp else 1.dp,
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                                )
+                            ) {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.padding(2.dp)
+                                ) {
+                                    Text(
+                                        text = mood,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontSize = 10.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
+                // 3. Associated Substance Selection
                 if (substances.isNotEmpty()) {
-                    Text(text = "Associated Substance", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = "ASSOCIATED SUBSTANCE",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Bold
+                    )
                     var expandedDropdown by remember { mutableStateOf(false) }
                     val currentSubstanceName = substances.find { it.id == selectedSubstanceId }?.name ?: "Select"
 
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .defaultMinSize(minHeight = 48.dp)
-                            .border(1.5.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
+                            .defaultMinSize(minHeight = 44.dp)
+                            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
                             .clickable { expandedDropdown = true }
-                            .padding(12.dp)
+                            .padding(10.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(text = currentSubstanceName, fontWeight = FontWeight.Bold)
+                            Text(text = currentSubstanceName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                             Icon(imageVector = Icons.Rounded.ArrowDropDown, contentDescription = null)
                         }
 
@@ -456,34 +594,41 @@ fun JournalFormDialog(
                     }
                 }
 
+                // 4. Detailed Notes (Optional)
                 EInkOutlinedTextField(
                     value = bodyText,
                     onValueChange = { bodyText = it },
-                    label = { Text("Reflection Body") },
-                    minLines = 4,
-                    maxLines = 6,
+                    label = { Text("Details / Journal Notes (Optional)") },
+                    minLines = 2,
+                    maxLines = 4,
                     modifier = Modifier.fillMaxWidth()
                 )
-            }
-        },
-        confirmButton = {
-            EInkButton(
-                enabled = titleText.isNotBlank() && bodyText.isNotBlank(),
-                onClick = {
-                    onConfirm(titleText.trim(), bodyText.trim(), selectedMood, selectedSubstanceId)
+
+                // Buttons
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    EInkButton(
+                        enabled = titleText.isNotBlank(),
+                        onClick = {
+                            onConfirm(titleText.trim(), bodyText.trim(), selectedMood, selectedSubstanceId)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Save Reflection", fontWeight = FontWeight.Bold)
+                    }
+
+                    EInkOutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Cancel")
+                    }
                 }
-            ) {
-                Text("Save", fontWeight = FontWeight.Bold)
             }
-        },
-        dismissButton = {
-            EInkOutlinedButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
-        containerColor = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(6.dp)
-    )
+        }
+    }
 }
 
 @Preview(showBackground = true)
@@ -498,7 +643,7 @@ fun JournalPreview() {
                         dateEpochDay = 19000,
                         substanceId = 1,
                         title = "One Month Sober!",
-                        body = "Feeling incredible energy today. Took a long walk in the morning and spent quality time with family.",
+                        body = "Feeling incredible energy today. Took a long walk in the morning.",
                         mood = "Grateful"
                     )
                 ),
@@ -508,7 +653,7 @@ fun JournalPreview() {
                         dateEpochDay = 19000,
                         substanceId = 1,
                         title = "One Month Sober!",
-                        body = "Feeling incredible energy today. Took a long walk in the morning and spent quality time with family.",
+                        body = "Feeling incredible energy today. Took a long walk in the morning.",
                         mood = "Grateful"
                     )
                 ),

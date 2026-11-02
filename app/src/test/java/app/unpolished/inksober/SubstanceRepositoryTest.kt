@@ -28,16 +28,15 @@ class SubstanceRepositoryTest {
     @Test
     fun calculateSobrietyDuration_correctlyCalculatesTime() {
         val now = System.currentTimeMillis()
-        // 5 days, 3 hours, 20 minutes ago
-        val fiveDaysAgo = now - (TimeUnit.DAYS.toMillis(5) + TimeUnit.HOURS.toMillis(3) + TimeUnit.MINUTES.toMillis(20))
+        // 5 days ago
+        val fiveDaysAgo = now - TimeUnit.DAYS.toMillis(5)
 
         val duration = repository.calculateSobrietyDuration(fiveDaysAgo, now)
 
         assertEquals(5L, duration.days)
-        assertEquals(3L, duration.hours)
-        assertEquals(20L, duration.minutes)
         assertEquals(5L, duration.totalDays)
-        assertEquals(5 * 24 + 3L, duration.totalHours)
+        assertEquals(0L, duration.months)
+        assertEquals(0L, duration.years)
     }
 
     @Test

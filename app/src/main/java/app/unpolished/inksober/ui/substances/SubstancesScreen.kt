@@ -86,7 +86,7 @@ fun SubstancesScreen(
             text = {
                 Text(
                     text = "Are you sure you want to delete '${substance.name}'? All tracking data for this substance will be permanently removed.",
-                    style = MaterialTheme.typography.bodyLarge
+                    style = MaterialTheme.typography.bodyMedium
                 )
             },
             confirmButton = {
@@ -105,7 +105,7 @@ fun SubstancesScreen(
                 }
             },
             containerColor = MaterialTheme.colorScheme.surface,
-            shape = RoundedCornerShape(6.dp)
+            shape = RoundedCornerShape(8.dp)
         )
     }
 }
@@ -119,85 +119,71 @@ fun SubstancesContent(
     onDeleteClick: (SubstanceEntity) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        floatingActionButton = {
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        item {
             EInkButton(
                 onClick = onAddClick,
-                shape = RoundedCornerShape(24.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Add,
-                    contentDescription = "Add Substance",
-                    modifier = Modifier.size(20.dp)
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("Add Substance", fontWeight = FontWeight.Bold)
+                Text("Add New Substance", fontWeight = FontWeight.Bold)
             }
         }
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "TRACKED SUBSTANCES",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "${uiState.substances.size} Total",
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                }
-            }
 
-            if (uiState.substances.isEmpty()) {
-                item {
-                    EInkCard(
+        item {
+            Text(
+                text = "TRACKED SUBSTANCES (${uiState.substances.size})",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
+
+        if (uiState.substances.isEmpty()) {
+            item {
+                EInkCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                ) {
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 16.dp)
+                            .padding(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "No substances tracked yet.",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Click the button below to add your first substance or habit.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        Text(
+                            text = "No substances tracked yet.",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Tap 'Add New Substance' above to start tracking.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
-            } else {
-                items(uiState.substances) { item ->
-                    SubstanceItemCard(
-                        item = item,
-                        onSetPrimaryClick = { onSetPrimaryClick(item.entity.id) },
-                        onEditClick = { onEditClick(item.entity) },
-                        onDeleteClick = { onDeleteClick(item.entity) }
-                    )
-                }
+            }
+        } else {
+            items(uiState.substances) { item ->
+                SubstanceItemCard(
+                    item = item,
+                    onSetPrimaryClick = { onSetPrimaryClick(item.entity.id) },
+                    onEditClick = { onEditClick(item.entity) },
+                    onDeleteClick = { onDeleteClick(item.entity) }
+                )
             }
         }
     }
@@ -210,7 +196,7 @@ fun SubstanceItemCard(
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
-    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()) }
+    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
     val startDateStr = remember(item.entity.startDateMillis) {
         dateFormat.format(Date(item.entity.startDateMillis))
     }
@@ -232,29 +218,44 @@ fun SubstanceItemCard(
                     Icon(
                         imageVector = icon,
                         contentDescription = item.entity.name,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(22.dp),
+                        tint = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = item.entity.name,
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
                     if (item.isPrimary) {
+                        Spacer(modifier = Modifier.width(4.dp))
                         Surface(
                             color = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary,
                             shape = RoundedCornerShape(4.dp)
                         ) {
-                            Text(
-                                text = "PRIMARY",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Check,
+                                    contentDescription = "Primary",
+                                    modifier = Modifier.size(11.dp)
+                                )
+                                Spacer(modifier = Modifier.width(2.dp))
+                                Text(
+                                    text = "PRIMARY",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
                         }
                     }
                 }
@@ -263,31 +264,31 @@ fun SubstanceItemCard(
                 Text(
                     text = "Category: ${item.entity.category}",
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.outline
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            Row {
-                IconButton(onClick = onEditClick, modifier = Modifier.size(48.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onEditClick, modifier = Modifier.size(36.dp)) {
                     Icon(
                         imageVector = Icons.Rounded.Edit,
                         contentDescription = "Edit Substance",
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 }
-                IconButton(onClick = onDeleteClick, modifier = Modifier.size(48.dp)) {
+                IconButton(onClick = onDeleteClick, modifier = Modifier.size(36.dp)) {
                     Icon(
                         imageVector = Icons.Rounded.Delete,
                         contentDescription = "Delete Substance",
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         EInkDivider()
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -296,18 +297,21 @@ fun SubstanceItemCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "CURRENT SOBER DURATION",
+                    text = "SOBRIETY DURATION",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline
+                    fontSize = 9.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "${item.duration.days}d ${item.duration.hours}h ${item.duration.minutes}m ${item.duration.seconds}s",
-                    style = MaterialTheme.typography.titleMedium,
+                    text = "${item.duration.totalDays} Days (${item.duration.formatFormattedString()})",
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = "Started: $startDateStr",
-                    style = MaterialTheme.typography.labelSmall
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -315,18 +319,18 @@ fun SubstanceItemCard(
                 Spacer(modifier = Modifier.width(6.dp))
                 EInkOutlinedButton(
                     onClick = onSetPrimaryClick,
-                    modifier = Modifier.defaultMinSize(minHeight = 48.dp)
+                    modifier = Modifier.defaultMinSize(minHeight = 36.dp)
                 ) {
-                    Text("Make Primary", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text("Make Primary", fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                 }
             }
         }
 
         if (item.entity.initialNote.isNotBlank()) {
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "Note: ${item.entity.initialNote}",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface
             )
         }
@@ -342,12 +346,12 @@ fun SubstancesPreview() {
                 substances = listOf(
                     SubstanceItem(
                         entity = SubstanceEntity(1, "Alcohol", System.currentTimeMillis() - 86400000L * 5, "Substances", "local_bar"),
-                        duration = SobrietyDuration(5, 2, 30, 10),
+                        duration = SobrietyDuration(days = 5, months = 0, years = 0, totalDays = 5),
                         isPrimary = true
                     ),
                     SubstanceItem(
                         entity = SubstanceEntity(2, "Nicotine", System.currentTimeMillis() - 86400000L * 12, "Substances", "smoking_rooms"),
-                        duration = SobrietyDuration(12, 10, 15, 0),
+                        duration = SobrietyDuration(days = 12, months = 0, years = 0, totalDays = 12),
                         isPrimary = false
                     )
                 )

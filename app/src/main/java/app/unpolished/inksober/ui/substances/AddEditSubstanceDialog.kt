@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
@@ -18,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -44,9 +46,9 @@ fun AddEditSubstanceDialog(
                 PresetSubstance.ALL_PRESETS.find {
                     it.displayName.equals(initialSubstance.name, ignoreCase = true) ||
                             it.iconName == initialSubstance.icon
-                } ?: PresetSubstance.ALL_PRESETS.last() // Custom
+                } ?: PresetSubstance.ALL_PRESETS.last()
             } else {
-                PresetSubstance.ALL_PRESETS.first() // Alcohol default
+                PresetSubstance.ALL_PRESETS.first()
             }
         )
     }
@@ -56,7 +58,6 @@ fun AddEditSubstanceDialog(
     var iconName by remember { mutableStateOf(initialSubstance?.icon ?: selectedPreset.iconName) }
     var notes by remember { mutableStateOf(initialSubstance?.initialNote ?: selectedPreset.defaultNote) }
 
-    // Start date/time state
     val initialCalendar = remember(initialSubstance) {
         Calendar.getInstance().apply {
             timeInMillis = initialSubstance?.startDateMillis ?: System.currentTimeMillis()
@@ -64,19 +65,19 @@ fun AddEditSubstanceDialog(
     }
 
     var selectedYear by remember { mutableIntStateOf(initialCalendar.get(Calendar.YEAR)) }
-    var selectedMonth by remember { mutableIntStateOf(initialCalendar.get(Calendar.MONTH) + 1) } // 1-12
+    var selectedMonth by remember { mutableIntStateOf(initialCalendar.get(Calendar.MONTH) + 1) }
     var selectedDay by remember { mutableIntStateOf(initialCalendar.get(Calendar.DAY_OF_MONTH)) }
-    var selectedHour by remember { mutableIntStateOf(initialCalendar.get(Calendar.HOUR_OF_DAY)) }
-    var selectedMinute by remember { mutableIntStateOf(initialCalendar.get(Calendar.MINUTE)) }
 
-    val calculatedMillis by remember(selectedYear, selectedMonth, selectedDay, selectedHour, selectedMinute) {
+    var daysAgoInput by remember { mutableStateOf("") }
+
+    val calculatedMillis by remember(selectedYear, selectedMonth, selectedDay) {
         derivedStateOf {
             Calendar.getInstance().apply {
                 set(Calendar.YEAR, selectedYear)
                 set(Calendar.MONTH, selectedMonth - 1)
                 set(Calendar.DAY_OF_MONTH, maxOf(1, minOf(selectedDay, getActualMaximum(Calendar.DAY_OF_MONTH))))
-                set(Calendar.HOUR_OF_DAY, selectedHour)
-                set(Calendar.MINUTE, selectedMinute)
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
                 set(Calendar.SECOND, 0)
                 set(Calendar.MILLISECOND, 0)
             }.timeInMillis
@@ -84,7 +85,7 @@ fun AddEditSubstanceDialog(
     }
 
     val isEditMode = initialSubstance != null
-    val dialogTitle = if (isEditMode) "Edit Substance" else "Add Substance or Habit"
+    val dialogTitle = if (isEditMode) "Edit Substance" else "Add Substance"
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -93,18 +94,18 @@ fun AddEditSubstanceDialog(
         Surface(
             modifier = Modifier
                 .fillMaxWidth(0.96f)
-                .padding(vertical = 8.dp)
-                .border(1.5.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp)),
-            shape = RoundedCornerShape(8.dp),
+                .padding(vertical = 4.dp)
+                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(10.dp)),
+            shape = RoundedCornerShape(10.dp),
             color = MaterialTheme.colorScheme.surface
         ) {
             Column(
                 modifier = Modifier
-                    .padding(12.dp)
+                    .padding(10.dp)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Dialog Header
+                // Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -112,12 +113,12 @@ fun AddEditSubstanceDialog(
                 ) {
                     Text(
                         text = dialogTitle,
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                     IconButton(
                         onClick = onDismiss,
-                        modifier = Modifier.size(48.dp)
+                        modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Close,
@@ -126,13 +127,13 @@ fun AddEditSubstanceDialog(
                     }
                 }
 
-                HorizontalDivider(thickness = 1.5.dp, color = MaterialTheme.colorScheme.outline)
+                HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outline)
 
-                // 1. Preset Substance Choices Grid
+                // 1. Preset Choice
                 Text(
                     text = "1. CHOOSE PRESET OR CUSTOM",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Bold
                 )
 
@@ -152,17 +153,17 @@ fun AddEditSubstanceDialog(
                     }
                 )
 
-                // 2. Custom Name & Category
-                Row(
+                // Name & Category
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     EInkOutlinedTextField(
                         value = customName,
                         onValueChange = { customName = it },
-                        label = { Text("Substance / Habit Name") },
+                        label = { Text("Substance Name") },
                         singleLine = true,
-                        modifier = Modifier.weight(1.3f)
+                        modifier = Modifier.fillMaxWidth()
                     )
 
                     EInkOutlinedTextField(
@@ -170,15 +171,15 @@ fun AddEditSubstanceDialog(
                         onValueChange = { customCategory = it },
                         label = { Text("Category") },
                         singleLine = true,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
 
-                // 3. Sobriety Start Date & Time Selector
+                // 2. Start Date Keypad Picker
                 Text(
-                    text = "2. SOBRIETY START DATE & TIME",
+                    text = "2. SOBRIETY START DATE",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Bold
                 )
 
@@ -191,36 +192,53 @@ fun AddEditSubstanceDialog(
                         selectedYear = cal.get(Calendar.YEAR)
                         selectedMonth = cal.get(Calendar.MONTH) + 1
                         selectedDay = cal.get(Calendar.DAY_OF_MONTH)
-                        selectedHour = cal.get(Calendar.HOUR_OF_DAY)
-                        selectedMinute = cal.get(Calendar.MINUTE)
+                        daysAgoInput = daysAgo.toString()
                     }
                 )
 
-                EInkExactDateTimePicker(
+                // Direct Days Ago Entry
+                EInkOutlinedTextField(
+                    value = daysAgoInput,
+                    onValueChange = { input ->
+                        val digitsOnly = input.filter { it.isDigit() }
+                        daysAgoInput = digitsOnly
+                        val days = digitsOnly.toIntOrNull()
+                        if (days != null && days >= 0) {
+                            val cal = Calendar.getInstance()
+                            cal.add(Calendar.DAY_OF_YEAR, -days)
+                            selectedYear = cal.get(Calendar.YEAR)
+                            selectedMonth = cal.get(Calendar.MONTH) + 1
+                            selectedDay = cal.get(Calendar.DAY_OF_MONTH)
+                        }
+                    },
+                    label = { Text("Or Enter Days Ago (e.g. 14)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // 3 Vertical Rows for Day, Month, Year
+                KeypadDatePickerRows(
                     year = selectedYear,
                     month = selectedMonth,
                     day = selectedDay,
-                    hour = selectedHour,
-                    minute = selectedMinute,
                     onYearChange = { selectedYear = it },
                     onMonthChange = { selectedMonth = it },
                     onDayChange = { selectedDay = it },
-                    onHourChange = { selectedHour = it },
-                    onMinuteChange = { selectedMinute = it }
+                    modifier = Modifier.fillMaxWidth()
                 )
 
-                // Summary of Selected Timestamp
                 val formattedDate = remember(calculatedMillis) {
-                    val sdf = SimpleDateFormat("EEE, MMM dd, yyyy 'at' HH:mm", Locale.getDefault())
+                    val sdf = SimpleDateFormat("EEE, MMM dd, yyyy", Locale.getDefault())
                     sdf.format(Date(calculatedMillis))
                 }
 
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.5.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp)),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = RoundedCornerShape(4.dp)
+                        .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(6.dp)),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = RoundedCornerShape(6.dp)
                 ) {
                     Row(
                         modifier = Modifier
@@ -229,42 +247,35 @@ fun AddEditSubstanceDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.Schedule,
+                            imageVector = Icons.Rounded.Event,
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp)
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "Starts: $formattedDate",
                             style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 }
 
-                // 4. Initial Reflection / Note
+                // Reflection Note
                 EInkOutlinedTextField(
                     value = notes,
                     onValueChange = { notes = it },
-                    label = { Text("Initial Reflection / Note (Optional)") },
+                    label = { Text("Reflection / Note (Optional)") },
                     maxLines = 2,
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Bottom Action Bar
-                Row(
+                // Action Buttons
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    EInkOutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Cancel")
-                    }
-
                     EInkButton(
                         onClick = {
                             if (customName.isNotBlank()) {
@@ -278,9 +289,19 @@ fun AddEditSubstanceDialog(
                             }
                         },
                         enabled = customName.isNotBlank(),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(if (isEditMode) "Save Changes" else "Add Substance", fontWeight = FontWeight.Bold)
+                        Text(
+                            text = if (isEditMode) "Save Changes" else "Add Substance",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    EInkOutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Cancel")
                     }
                 }
             }
@@ -294,13 +315,12 @@ fun PresetSubstanceGrid(
     selectedPreset: PresetSubstance,
     onPresetSelected: (PresetSubstance) -> Unit
 ) {
-    // 2-column or 3-column scrollable grid optimized for 4.3" screen height constraint
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(130.dp)
-            .border(1.5.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
-            .background(MaterialTheme.colorScheme.surface)
+            .height(115.dp)
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(4.dp)
     ) {
         LazyVerticalGrid(
@@ -316,14 +336,14 @@ fun PresetSubstanceGrid(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 44.dp)
+                        .heightIn(min = 38.dp)
                         .clickable { onPresetSelected(preset) },
-                    shape = RoundedCornerShape(4.dp),
+                    shape = RoundedCornerShape(6.dp),
                     color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
                     contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                     border = BorderStroke(
-                        width = if (isSelected) 2.dp else 1.5.dp,
-                        color = MaterialTheme.colorScheme.outline
+                        width = if (isSelected) 2.dp else 1.dp,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                     )
                 ) {
                     Row(
@@ -335,15 +355,16 @@ fun PresetSubstanceGrid(
                         Icon(
                             imageVector = icon,
                             contentDescription = preset.displayName,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(18.dp)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = preset.displayName,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                             fontSize = 11.sp,
                             maxLines = 1,
+                            softWrap = false,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
@@ -362,10 +383,10 @@ fun QuickTimePresetRow(
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         val options = listOf(
-            Pair("Now", 0),
+            Pair("Today", 0),
             Pair("1 Day", 1),
-            Pair("1 Week", 7),
-            Pair("1 Month", 30)
+            Pair("1 Wk", 7),
+            Pair("1 Mo", 30)
         )
 
         options.forEach { (label, days) ->
@@ -374,13 +395,15 @@ fun QuickTimePresetRow(
                 modifier = Modifier
                     .weight(1f)
                     .height(36.dp),
-                shape = RoundedCornerShape(4.dp)
+                shape = RoundedCornerShape(6.dp)
             ) {
                 Text(
                     text = label,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
         }
@@ -388,162 +411,61 @@ fun QuickTimePresetRow(
 }
 
 @Composable
-fun EInkExactDateTimePicker(
+fun KeypadDatePickerRows(
     year: Int,
     month: Int,
     day: Int,
-    hour: Int,
-    minute: Int,
     onYearChange: (Int) -> Unit,
     onMonthChange: (Int) -> Unit,
     onDayChange: (Int) -> Unit,
-    onHourChange: (Int) -> Unit,
-    onMinuteChange: (Int) -> Unit
+    modifier: Modifier = Modifier
 ) {
     val monthNames = remember {
         listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
     }
+    val currentMonthName = monthNames.getOrElse(month - 1) { "" }
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.5.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
-            .padding(8.dp),
+        modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        // Date Controls: Year, Month, Day
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            // Month Stepper
-            NumberStepperBox(
-                label = "MONTH",
-                displayValue = monthNames.getOrElse(month - 1) { "$month" },
-                onDecrement = { onMonthChange(if (month > 1) month - 1 else 12) },
-                onIncrement = { onMonthChange(if (month < 12) month + 1 else 1) },
-                modifier = Modifier.weight(1.1f)
-            )
-
-            // Day Stepper
-            NumberStepperBox(
-                label = "DAY",
-                displayValue = day.toString().padStart(2, '0'),
-                onDecrement = { onDayChange(if (day > 1) day - 1 else 31) },
-                onIncrement = { onDayChange(if (day < 31) day + 1 else 1) },
-                modifier = Modifier.weight(1f)
-            )
-
-            // Year Stepper
-            NumberStepperBox(
-                label = "YEAR",
-                displayValue = year.toString(),
-                onDecrement = { onYearChange(year - 1) },
-                onIncrement = { onYearChange(year + 1) },
-                modifier = Modifier.weight(1.2f)
-            )
-        }
-
-        // Time Controls: Hour, Minute
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            // Hour Stepper (0-23)
-            NumberStepperBox(
-                label = "HOUR (0-23)",
-                displayValue = hour.toString().padStart(2, '0'),
-                onDecrement = { onHourChange(if (hour > 0) hour - 1 else 23) },
-                onIncrement = { onHourChange(if (hour < 23) hour + 1 else 0) },
-                modifier = Modifier.weight(1f)
-            )
-
-            // Minute Stepper (0-59)
-            NumberStepperBox(
-                label = "MINUTE",
-                displayValue = minute.toString().padStart(2, '0'),
-                onDecrement = { onMinuteChange(if (minute > 0) minute - 1 else 59) },
-                onIncrement = { onMinuteChange(if (minute < 59) minute + 1 else 0) },
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-}
-
-@Composable
-fun NumberStepperBox(
-    label: String,
-    displayValue: String,
-    onDecrement: () -> Unit,
-    onIncrement: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .border(1.5.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.outline
+        // Row 1: Day
+        EInkOutlinedTextField(
+            value = day.toString(),
+            onValueChange = { input ->
+                val d = input.filter { it.isDigit() }.take(2).toIntOrNull()
+                if (d != null && d in 1..31) onDayChange(d)
+            },
+            label = { Text("Day (1–31)") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(2.dp))
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
+        // Row 2: Month
+        EInkOutlinedTextField(
+            value = if (currentMonthName.isNotBlank()) "$month ($currentMonthName)" else month.toString(),
+            onValueChange = { input ->
+                val m = input.filter { it.isDigit() }.take(2).toIntOrNull()
+                if (m != null && m in 1..12) onMonthChange(m)
+            },
+            label = { Text("Month (1–12)") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
-        ) {
-            // Decrement (-) Button
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .border(1.5.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable { onDecrement() },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "-",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+        )
 
-            Spacer(modifier = Modifier.width(4.dp))
-
-            // Value Text
-            Text(
-                text = displayValue,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.weight(1f)
-            )
-
-            Spacer(modifier = Modifier.width(4.dp))
-
-            // Increment (+) Button
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .border(1.5.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable { onIncrement() },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "+",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
+        // Row 3: Year
+        EInkOutlinedTextField(
+            value = year.toString(),
+            onValueChange = { input ->
+                val y = input.filter { it.isDigit() }.take(4).toIntOrNull()
+                if (y != null && y in 1900..2100) onYearChange(y)
+            },
+            label = { Text("Year (e.g. 2024)") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }

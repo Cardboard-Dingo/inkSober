@@ -2,17 +2,15 @@ package app.unpolished.inksober.domain.model
 
 data class SobrietyDuration(
     val days: Long = 0,
-    val hours: Long = 0,
-    val minutes: Long = 0,
-    val seconds: Long = 0,
-    val totalHours: Long = 0,
+    val months: Long = 0,
+    val years: Long = 0,
     val totalDays: Long = 0
 ) {
     fun formatFormattedString(): String {
-        return when {
-            days > 0 -> "$days d, $hours h, $minutes m"
-            hours > 0 -> "$hours h, $minutes m, $seconds s"
-            else -> "$minutes m, $seconds s"
-        }
+        val parts = mutableListOf<String>()
+        if (years > 0) parts.add("$years yr${if (years > 1) "s" else ""}")
+        if (months > 0) parts.add("$months mo${if (months > 1) "s" else ""}")
+        if (days > 0 || parts.isEmpty()) parts.add("$days day${if (days != 1L) "s" else ""}")
+        return parts.joinToString(", ")
     }
 }

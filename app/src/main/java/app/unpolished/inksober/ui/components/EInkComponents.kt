@@ -4,27 +4,53 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-val EInkCardShape: Shape = RoundedCornerShape(6.dp)
+val EInkCardShape: Shape = RoundedCornerShape(8.dp)
+
+fun Modifier.keypadFocusBorder(
+    shape: Shape = RoundedCornerShape(6.dp),
+    unfocusedBorderWidth: Dp = 1.dp,
+    focusedBorderWidth: Dp = 3.dp,
+    unfocusedColor: Color? = null,
+    focusedColor: Color? = null,
+): Modifier = composed {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+
+    val actualUnfocusedColor = unfocusedColor ?: MaterialTheme.colorScheme.outline
+    val actualFocusedColor = focusedColor ?: MaterialTheme.colorScheme.tertiary
+
+    this.border(
+        width = if (isFocused) focusedBorderWidth else unfocusedBorderWidth,
+        color = if (isFocused) actualFocusedColor else actualUnfocusedColor,
+        shape = shape
+    )
+}
 
 @Composable
 fun EInkCard(
     modifier: Modifier = Modifier,
-    borderWidth: Dp = 1.5.dp,
+    borderWidth: Dp = 1.dp,
     borderColor: Color = MaterialTheme.colorScheme.outline,
     backgroundColor: Color = MaterialTheme.colorScheme.surface,
     content: @Composable ColumnScope.() -> Unit
@@ -37,7 +63,7 @@ fun EInkCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(10.dp),
             content = content
         )
     }
@@ -48,15 +74,18 @@ fun EInkButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    shape: Shape = RoundedCornerShape(4.dp),
+    shape: Shape = RoundedCornerShape(6.dp),
+    contentPadding: PaddingValues = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
     content: @Composable RowScope.() -> Unit
 ) {
     Button(
         onClick = onClick,
-        modifier = modifier.defaultMinSize(minHeight = 48.dp, minWidth = 48.dp),
+        modifier = modifier
+            .defaultMinSize(minHeight = 44.dp, minWidth = 44.dp)
+            .keypadFocusBorder(shape = shape),
         enabled = enabled,
         shape = shape,
-        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline),
+        contentPadding = contentPadding,
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -73,15 +102,19 @@ fun EInkOutlinedButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    shape: Shape = RoundedCornerShape(4.dp),
+    shape: Shape = RoundedCornerShape(6.dp),
+    contentPadding: PaddingValues = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
     content: @Composable RowScope.() -> Unit
 ) {
     OutlinedButton(
         onClick = onClick,
-        modifier = modifier.defaultMinSize(minHeight = 48.dp, minWidth = 48.dp),
+        modifier = modifier
+            .defaultMinSize(minHeight = 44.dp, minWidth = 44.dp)
+            .keypadFocusBorder(shape = shape),
         enabled = enabled,
         shape = shape,
-        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline),
+        contentPadding = contentPadding,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
         colors = ButtonDefaults.outlinedButtonColors(
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.onSurface
@@ -100,25 +133,24 @@ fun EInkFilterChip(
 ) {
     Box(
         modifier = modifier
-            .defaultMinSize(minHeight = 48.dp, minWidth = 48.dp)
-            .border(
-                width = 1.5.dp,
-                color = MaterialTheme.colorScheme.outline,
-                shape = RoundedCornerShape(4.dp)
-            )
+            .defaultMinSize(minHeight = 38.dp, minWidth = 38.dp)
+            .keypadFocusBorder(shape = RoundedCornerShape(6.dp))
             .background(
                 color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-                shape = RoundedCornerShape(4.dp)
+                shape = RoundedCornerShape(6.dp)
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = 10.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
             color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -146,7 +178,9 @@ fun EInkOutlinedTextField(
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = modifier.defaultMinSize(minHeight = 48.dp),
+        modifier = modifier
+            .defaultMinSize(minHeight = 44.dp)
+            .keypadFocusBorder(shape = RoundedCornerShape(6.dp)),
         enabled = enabled,
         readOnly = readOnly,
         label = label,
@@ -161,17 +195,17 @@ fun EInkOutlinedTextField(
         singleLine = singleLine,
         maxLines = maxLines,
         minLines = minLines,
-        shape = RoundedCornerShape(4.dp),
+        shape = RoundedCornerShape(6.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = MaterialTheme.colorScheme.outline,
+            focusedBorderColor = MaterialTheme.colorScheme.tertiary,
             unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-            focusedLabelColor = MaterialTheme.colorScheme.onSurface,
+            focusedLabelColor = MaterialTheme.colorScheme.tertiary,
             unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
             focusedContainerColor = MaterialTheme.colorScheme.surface,
             unfocusedContainerColor = MaterialTheme.colorScheme.surface,
             focusedTextColor = MaterialTheme.colorScheme.onSurface,
             unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-            cursorColor = MaterialTheme.colorScheme.onSurface
+            cursorColor = MaterialTheme.colorScheme.tertiary
         )
     )
 }
@@ -179,7 +213,7 @@ fun EInkOutlinedTextField(
 @Composable
 fun EInkDivider(
     modifier: Modifier = Modifier,
-    thickness: Dp = 1.5.dp,
+    thickness: Dp = 1.dp,
     color: Color = MaterialTheme.colorScheme.outline
 ) {
     HorizontalDivider(

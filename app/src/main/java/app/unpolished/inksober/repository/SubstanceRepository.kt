@@ -5,6 +5,7 @@ import app.unpolished.inksober.data.local.entity.SubstanceEntity
 import app.unpolished.inksober.domain.model.Milestone
 import app.unpolished.inksober.domain.model.SobrietyDuration
 import kotlinx.coroutines.flow.Flow
+import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
 class SubstanceRepository(private val substanceDao: SubstanceDao) {
@@ -31,20 +32,30 @@ class SubstanceRepository(private val substanceDao: SubstanceDao) {
             return SobrietyDuration()
         }
         val diffMillis = currentMillis - startDateMillis
+        val totalDays = TimeUnit.MILLISECONDS.toDays(diffMillis)
 
-        val seconds = TimeUnit.MILLISECONDS.toSeconds(diffMillis) % 60
-        val minutes = TimeUnit.MILLISECONDS.toMinutes(diffMillis) % 60
-        val hours = TimeUnit.MILLISECONDS.toHours(diffMillis) % 24
-        val days = TimeUnit.MILLISECONDS.toDays(diffMillis)
-        val totalHours = TimeUnit.MILLISECONDS.toHours(diffMillis)
-        val totalDays = days
+        val startCal = Calendar.getInstance().apply { timeInMillis = startDateMillis }
+        val currentCal = Calendar.getInstance().apply { timeInMillis = currentMillis }
+
+        var years = currentCal.get(Calendar.YEAR) - startCal.get(Calendar.YEAR)
+        var months = currentCal.get(Calendar.MONTH) - startCal.get(Calendar.MONTH)
+        var days = currentCal.get(Calendar.DAY_OF_MONTH) - startCal.get(Calendar.DAY_OF_MONTH)
+
+        if (days < 0) {
+            months -= 1
+            val prevMonthCal = currentCal.clone() as Calendar
+            prevMonthCal.add(Calendar.MONTH, -1)
+            days += prevMonthCal.getActualMaximum(Calendar.DAY_OF_MONTH)
+        }
+        if (months < 0) {
+            years -= 1
+            months += 12
+        }
 
         return SobrietyDuration(
-            days = days,
-            hours = hours,
-            minutes = minutes,
-            seconds = seconds,
-            totalHours = totalHours,
+            days = days.coerceAtLeast(0).toLong(),
+            months = months.coerceAtLeast(0).toLong(),
+            years = years.coerceAtLeast(0).toLong(),
             totalDays = totalDays
         )
     }
@@ -58,7 +69,7 @@ class SubstanceRepository(private val substanceDao: SubstanceDao) {
         } else 0
 
         val standardMilestones = listOf(
-            Pair(1, "24 Hours"),
+            Pair(1, "1 Day"),
             Pair(3, "3 Days"),
             Pair(7, "1 Week"),
             Pair(14, "2 Weeks"),

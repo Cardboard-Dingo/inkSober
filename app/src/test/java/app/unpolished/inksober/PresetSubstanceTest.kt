@@ -44,15 +44,15 @@ class PresetSubstanceTest {
     }
 
     @Test
-    fun exactTimestampSobrietyCalculation_calculatesPreciseDuration() {
+    fun exactTimestampSobrietyCalculation_calculatesPreciseDurationInDays() {
         val calendar = Calendar.getInstance().apply {
-            set(2024, Calendar.JANUARY, 1, 12, 0, 0)
+            set(2024, Calendar.JANUARY, 1, 0, 0, 0)
             set(Calendar.MILLISECOND, 0)
         }
         val pastStartMillis = calendar.timeInMillis
 
         val nowCalendar = Calendar.getInstance().apply {
-            set(2024, Calendar.JANUARY, 10, 15, 30, 0)
+            set(2024, Calendar.JANUARY, 10, 0, 0, 0)
             set(Calendar.MILLISECOND, 0)
         }
         val nowMillis = nowCalendar.timeInMillis
@@ -63,8 +63,9 @@ class PresetSubstanceTest {
         val duration = repository.calculateSobrietyDuration(pastStartMillis, nowMillis)
 
         assertEquals(9L, duration.days)
-        assertEquals(3L, duration.hours)
-        assertEquals(30L, duration.minutes)
+        assertEquals(9L, duration.totalDays)
+        assertEquals(0L, duration.months)
+        assertEquals(0L, duration.years)
     }
 
     private class FakeSubstanceDao : app.unpolished.inksober.data.local.dao.SubstanceDao {

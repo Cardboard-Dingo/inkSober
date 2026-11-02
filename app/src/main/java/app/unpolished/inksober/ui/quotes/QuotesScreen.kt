@@ -17,11 +17,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.unpolished.inksober.data.local.entity.RecoveryQuoteEntity
 import app.unpolished.inksober.ui.components.*
+import app.unpolished.inksober.ui.theme.AmberMilestone
 import app.unpolished.inksober.ui.theme.InkSoberTheme
 
 @Composable
@@ -63,108 +65,95 @@ fun QuotesContent(
     onAddQuoteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        floatingActionButton = {
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        // Top Header Action Button (No floating FAB overlapping cards)
+        item {
             EInkButton(
                 onClick = onAddQuoteClick,
-                shape = RoundedCornerShape(24.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Add,
-                    contentDescription = "Add Quote",
-                    modifier = Modifier.size(20.dp)
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("Add Quote", fontWeight = FontWeight.Bold)
+                Text("Add Custom Quote", fontWeight = FontWeight.Bold)
             }
         }
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "RECOVERY QUOTES",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "${uiState.quotes.size} Quotes",
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                }
-            }
 
-            // Search Bar
-            item {
-                EInkOutlinedTextField(
-                    value = uiState.searchQuery,
-                    onValueChange = onSearchQueryChange,
-                    placeholder = { Text("Search quotes or authors...") },
-                    leadingIcon = {
-                        Icon(imageVector = Icons.Rounded.Search, contentDescription = "Search")
-                    },
-                    trailingIcon = {
-                        if (uiState.searchQuery.isNotEmpty()) {
-                            IconButton(
-                                onClick = { onSearchQueryChange("") },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Icon(imageVector = Icons.Rounded.Close, contentDescription = "Clear")
-                            }
-                        }
-                    },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+        item {
+            Text(
+                text = "RECOVERY QUOTES (${uiState.quotes.size})",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
 
-            if (uiState.quotes.isEmpty()) {
-                item {
-                    EInkCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 16.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+        // Search Bar
+        item {
+            EInkOutlinedTextField(
+                value = uiState.searchQuery,
+                onValueChange = onSearchQueryChange,
+                placeholder = { Text("Search quotes or authors...", fontSize = 12.sp) },
+                leadingIcon = {
+                    Icon(imageVector = Icons.Rounded.Search, contentDescription = "Search", modifier = Modifier.size(18.dp))
+                },
+                trailingIcon = {
+                    if (uiState.searchQuery.isNotEmpty()) {
+                        IconButton(
+                            onClick = { onSearchQueryChange("") },
+                            modifier = Modifier.size(36.dp)
                         ) {
-                            Text(
-                                text = "No quotes match your search.",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = "Try searching with a different term or add a new custom quote.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Icon(imageVector = Icons.Rounded.Close, contentDescription = "Clear", modifier = Modifier.size(18.dp))
                         }
                     }
+                },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        if (uiState.quotes.isEmpty()) {
+            item {
+                EInkCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "No quotes match your search.",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Tap 'Add Custom Quote' above to save your favorite recovery quotes.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
-            } else {
-                items(uiState.quotes) { quote ->
-                    QuoteItemCard(
-                        quote = quote,
-                        onCopy = { onCopyQuote(quote) },
-                        onShare = { onShareQuote(quote) }
-                    )
-                }
+            }
+        } else {
+            items(uiState.quotes) { quote ->
+                QuoteItemCard(
+                    quote = quote,
+                    onCopyQuote = { onCopyQuote(quote) },
+                    onShareQuote = { onShareQuote(quote) }
+                )
             }
         }
     }
@@ -173,50 +162,52 @@ fun QuotesContent(
 @Composable
 fun QuoteItemCard(
     quote: RecoveryQuoteEntity,
-    onCopy: () -> Unit,
-    onShare: () -> Unit
+    onCopyQuote: () -> Unit,
+    onShareQuote: () -> Unit
 ) {
     EInkCard(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        backgroundColor = MaterialTheme.colorScheme.surface
     ) {
-        Text(
-            text = "\"${quote.quoteText}\"",
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium
-        )
-
-        Spacer(modifier = Modifier.height(6.dp))
-
-        Text(
-            text = "— ${quote.author}",
-            style = MaterialTheme.typography.labelMedium,
-            textAlign = TextAlign.End,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(6.dp))
-        EInkDivider()
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
-        ) {
-            IconButton(onClick = onCopy, modifier = Modifier.size(48.dp)) {
-                Icon(
-                    imageVector = Icons.Rounded.ContentCopy,
-                    contentDescription = "Copy Quote",
-                    modifier = Modifier.size(20.dp)
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = "\"${quote.quoteText}\"",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "— ${quote.author}",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = AmberMilestone,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-            }
-            Spacer(modifier = Modifier.width(4.dp))
-            IconButton(onClick = onShare, modifier = Modifier.size(48.dp)) {
-                Icon(
-                    imageVector = Icons.Rounded.Share,
-                    contentDescription = "Share Quote",
-                    modifier = Modifier.size(20.dp)
-                )
+
+                Row {
+                    IconButton(onClick = onCopyQuote, modifier = Modifier.size(36.dp)) {
+                        Icon(
+                            imageVector = Icons.Rounded.ContentCopy,
+                            contentDescription = "Copy Quote",
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    IconButton(onClick = onShareQuote, modifier = Modifier.size(36.dp)) {
+                        Icon(
+                            imageVector = Icons.Rounded.Share,
+                            contentDescription = "Share Quote",
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
             }
         }
     }
@@ -225,15 +216,19 @@ fun QuoteItemCard(
 @Composable
 fun AddQuoteDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String, String) -> Unit
+    onConfirm: (quoteText: String, author: String) -> Unit
 ) {
-    var text by remember { mutableStateOf("") }
-    var author by remember { mutableStateOf("") }
+    var quoteText by remember { mutableStateOf("") }
+    var authorText by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text("Add Custom Quote", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(
+                text = "Add Custom Quote",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
         },
         text = {
             Column(
@@ -241,18 +236,20 @@ fun AddQuoteDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 EInkOutlinedTextField(
-                    value = text,
-                    onValueChange = { text = it },
+                    value = quoteText,
+                    onValueChange = { quoteText = it },
                     label = { Text("Quote Text") },
-                    minLines = 3,
-                    maxLines = 5,
+                    placeholder = { Text("e.g. One day at a time.") },
+                    minLines = 2,
+                    maxLines = 4,
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 EInkOutlinedTextField(
-                    value = author,
-                    onValueChange = { author = it },
+                    value = authorText,
+                    onValueChange = { authorText = it },
                     label = { Text("Author / Source") },
+                    placeholder = { Text("e.g. Anonymous / Literature") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -260,13 +257,17 @@ fun AddQuoteDialog(
         },
         confirmButton = {
             EInkButton(
-                enabled = text.isNotBlank(),
                 onClick = {
-                    val finalAuthor = if (author.isBlank()) "Anonymous" else author.trim()
-                    onConfirm(text.trim(), finalAuthor)
-                }
+                    if (quoteText.isNotBlank()) {
+                        onConfirm(
+                            quoteText.trim(),
+                            if (authorText.isBlank()) "Anonymous" else authorText.trim()
+                        )
+                    }
+                },
+                enabled = quoteText.isNotBlank()
             ) {
-                Text("Add", fontWeight = FontWeight.Bold)
+                Text("Add Quote", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
@@ -275,7 +276,7 @@ fun AddQuoteDialog(
             }
         },
         containerColor = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(6.dp)
+        shape = RoundedCornerShape(8.dp)
     )
 }
 
@@ -287,7 +288,7 @@ private fun copyQuoteToClipboard(context: Context, quote: RecoveryQuoteEntity) {
 }
 
 private fun shareQuote(context: Context, quote: RecoveryQuoteEntity) {
-    val shareText = "\"${quote.quoteText}\" — ${quote.author}\n\nShared via inkSober"
+    val shareText = "\"${quote.quoteText}\" — ${quote.author}\n\nShared via SoberSide"
     val sendIntent = Intent().apply {
         action = Intent.ACTION_SEND
         putExtra(Intent.EXTRA_TEXT, shareText)
@@ -303,8 +304,11 @@ fun QuotesPreview() {
         QuotesContent(
             uiState = QuotesUiState(
                 quotes = listOf(
-                    RecoveryQuoteEntity(1, "One day at a time.", "AA Literature"),
-                    RecoveryQuoteEntity(2, "Progress, not perfection.", "Traditional Recovery")
+                    RecoveryQuoteEntity(
+                        id = 1,
+                        quoteText = "One day at a time.",
+                        author = "AA Literature"
+                    )
                 )
             ),
             onSearchQueryChange = {},

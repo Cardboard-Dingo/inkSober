@@ -38,7 +38,7 @@ class DashboardViewModel(
     init {
         viewModelScope.launch {
             while (true) {
-                delay(1000L)
+                delay(60000L) // Refresh every minute since time is measured in days/months/years
                 _ticker.value = System.currentTimeMillis()
             }
         }

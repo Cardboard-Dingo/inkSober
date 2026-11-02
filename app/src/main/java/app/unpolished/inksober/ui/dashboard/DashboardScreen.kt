@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Notes
@@ -20,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -27,7 +29,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import app.unpolished.inksober.R
 import app.unpolished.inksober.data.local.entity.RecoveryQuoteEntity
 import app.unpolished.inksober.data.local.entity.SubstanceEntity
 import app.unpolished.inksober.domain.model.Milestone
@@ -35,8 +36,9 @@ import app.unpolished.inksober.domain.model.PresetSubstance
 import app.unpolished.inksober.domain.model.SobrietyDuration
 import app.unpolished.inksober.ui.components.*
 import app.unpolished.inksober.ui.substances.AddEditSubstanceDialog
-import app.unpolished.inksober.ui.substances.EInkExactDateTimePicker
+import app.unpolished.inksober.ui.substances.KeypadDatePickerRows
 import app.unpolished.inksober.ui.substances.QuickTimePresetRow
+import app.unpolished.inksober.ui.theme.AmberMilestone
 import app.unpolished.inksober.ui.theme.InkSoberTheme
 import java.text.SimpleDateFormat
 import java.util.*
@@ -117,17 +119,17 @@ fun ResetSobrietyDateDialog(
     var selectedYear by remember { mutableIntStateOf(initialCalendar.get(Calendar.YEAR)) }
     var selectedMonth by remember { mutableIntStateOf(initialCalendar.get(Calendar.MONTH) + 1) }
     var selectedDay by remember { mutableIntStateOf(initialCalendar.get(Calendar.DAY_OF_MONTH)) }
-    var selectedHour by remember { mutableIntStateOf(initialCalendar.get(Calendar.HOUR_OF_DAY)) }
-    var selectedMinute by remember { mutableIntStateOf(initialCalendar.get(Calendar.MINUTE)) }
 
-    val calculatedMillis by remember(selectedYear, selectedMonth, selectedDay, selectedHour, selectedMinute) {
+    var daysAgoInput by remember { mutableStateOf("") }
+
+    val calculatedMillis by remember(selectedYear, selectedMonth, selectedDay) {
         derivedStateOf {
             Calendar.getInstance().apply {
                 set(Calendar.YEAR, selectedYear)
                 set(Calendar.MONTH, selectedMonth - 1)
                 set(Calendar.DAY_OF_MONTH, maxOf(1, minOf(selectedDay, getActualMaximum(Calendar.DAY_OF_MONTH))))
-                set(Calendar.HOUR_OF_DAY, selectedHour)
-                set(Calendar.MINUTE, selectedMinute)
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
                 set(Calendar.SECOND, 0)
                 set(Calendar.MILLISECOND, 0)
             }.timeInMillis
@@ -135,7 +137,7 @@ fun ResetSobrietyDateDialog(
     }
 
     val formattedSelectedDate = remember(calculatedMillis) {
-        val sdf = SimpleDateFormat("EEE, MMM dd, yyyy 'at' HH:mm", Locale.getDefault())
+        val sdf = SimpleDateFormat("EEE, MMM dd, yyyy", Locale.getDefault())
         sdf.format(Date(calculatedMillis))
     }
 
@@ -146,16 +148,16 @@ fun ResetSobrietyDateDialog(
         Surface(
             modifier = Modifier
                 .fillMaxWidth(0.95f)
-                .padding(vertical = 8.dp)
-                .border(1.5.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp)),
-            shape = RoundedCornerShape(8.dp),
+                .padding(vertical = 4.dp)
+                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(10.dp)),
+            shape = RoundedCornerShape(10.dp),
             color = MaterialTheme.colorScheme.surface
         ) {
             Column(
                 modifier = Modifier
-                    .padding(12.dp)
+                    .padding(10.dp)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -163,18 +165,19 @@ fun ResetSobrietyDateDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Reset / Set Start Date",
-                        style = MaterialTheme.typography.titleLarge,
+                        text = "Reset Start Date",
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(36.dp)) {
                         Icon(imageVector = Icons.Rounded.Close, contentDescription = "Close")
                     }
                 }
 
                 Text(
-                    text = "Select exact past date & time when your sobriety for '$substanceName' started:",
-                    style = MaterialTheme.typography.bodyMedium
+                    text = "Select start date for '$substanceName':",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 QuickTimePresetRow(
@@ -186,30 +189,48 @@ fun ResetSobrietyDateDialog(
                         selectedYear = cal.get(Calendar.YEAR)
                         selectedMonth = cal.get(Calendar.MONTH) + 1
                         selectedDay = cal.get(Calendar.DAY_OF_MONTH)
-                        selectedHour = cal.get(Calendar.HOUR_OF_DAY)
-                        selectedMinute = cal.get(Calendar.MINUTE)
+                        daysAgoInput = daysAgo.toString()
                     }
                 )
 
-                EInkExactDateTimePicker(
+                // Direct Days Ago Entry
+                EInkOutlinedTextField(
+                    value = daysAgoInput,
+                    onValueChange = { input ->
+                        val digitsOnly = input.filter { it.isDigit() }
+                        daysAgoInput = digitsOnly
+                        val days = digitsOnly.toIntOrNull()
+                        if (days != null && days >= 0) {
+                            val cal = Calendar.getInstance()
+                            cal.add(Calendar.DAY_OF_YEAR, -days)
+                            selectedYear = cal.get(Calendar.YEAR)
+                            selectedMonth = cal.get(Calendar.MONTH) + 1
+                            selectedDay = cal.get(Calendar.DAY_OF_MONTH)
+                        }
+                    },
+                    label = { Text("Or Enter Days Ago (e.g. 14)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // 3 Vertical Rows for Day, Month, Year
+                KeypadDatePickerRows(
                     year = selectedYear,
                     month = selectedMonth,
                     day = selectedDay,
-                    hour = selectedHour,
-                    minute = selectedMinute,
                     onYearChange = { selectedYear = it },
                     onMonthChange = { selectedMonth = it },
                     onDayChange = { selectedDay = it },
-                    onHourChange = { selectedHour = it },
-                    onMinuteChange = { selectedMinute = it }
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.5.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp)),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = RoundedCornerShape(4.dp)
+                        .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(6.dp)),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = RoundedCornerShape(6.dp)
                 ) {
                     Row(
                         modifier = Modifier
@@ -218,37 +239,39 @@ fun ResetSobrietyDateDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.Schedule,
+                            imageVector = Icons.Rounded.Event,
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp)
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "New Start Time: $formattedSelectedDate",
+                            text = "New Start Date: $formattedSelectedDate",
                             style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 }
 
-                Row(
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    EInkOutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Cancel")
-                    }
-
                     EInkButton(
                         onClick = {
                             onConfirmReset(calculatedMillis)
                         },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Set Start Date", fontWeight = FontWeight.Bold)
+                    }
+
+                    EInkOutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Cancel")
                     }
                 }
             }
@@ -279,10 +302,10 @@ fun DashboardContent(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        // Top Header & Active Substance Switcher
+        // Active Substance Card
         item {
             EInkCard(
                 modifier = Modifier.fillMaxWidth(),
@@ -301,21 +324,22 @@ fun DashboardContent(
                         Icon(
                             imageVector = categoryIcon,
                             contentDescription = uiState.activeSubstance?.name ?: "Substance Icon",
-                            modifier = Modifier.size(32.dp),
-                            tint = MaterialTheme.colorScheme.onSurface
+                            modifier = Modifier.size(26.dp),
+                            tint = MaterialTheme.colorScheme.primary
                         )
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "TRACKING SOBRIETY",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.outline,
+                                fontSize = 9.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.Bold
                             )
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     text = uiState.activeSubstance?.name ?: "No Substance Selected",
-                                    style = MaterialTheme.typography.titleLarge,
+                                    style = MaterialTheme.typography.titleMedium,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     fontWeight = FontWeight.Bold
@@ -323,7 +347,7 @@ fun DashboardContent(
                                 if (uiState.allSubstances.size > 1) {
                                     IconButton(
                                         onClick = { expandedDropdown = true },
-                                        modifier = Modifier.size(48.dp)
+                                        modifier = Modifier.size(32.dp)
                                     ) {
                                         Icon(
                                             imageVector = Icons.Rounded.ArrowDropDown,
@@ -365,20 +389,21 @@ fun DashboardContent(
                         ) {
                             Text(
                                 text = uiState.activeSubstance?.category?.uppercase() ?: "GENERAL",
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                 style = MaterialTheme.typography.labelSmall,
+                                fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }
 
                         IconButton(
                             onClick = onAddSubstanceClick,
-                            modifier = Modifier.size(48.dp)
+                            modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.Add,
                                 contentDescription = "Add Substance",
-                                modifier = Modifier.size(22.dp)
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
@@ -386,65 +411,95 @@ fun DashboardContent(
             }
         }
 
-        // Counter Cards (Days, Hours, Minutes, Seconds)
+        // Hero Sobriety Counter Banner
         item {
             ElapsedCounterView(duration = uiState.sobrietyDuration)
         }
 
-        // Quick Actions Row
+        // Quick Actions Stacked Buttons (Full Width, flexible height, unclipped text)
         item {
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 EInkOutlinedButton(
                     onClick = onResetClick,
                     modifier = Modifier
-                        .weight(1f)
-                        .defaultMinSize(minHeight = 48.dp)
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = 44.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Refresh,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Reset Date", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Refresh,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Reset Date",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
 
                 EInkOutlinedButton(
                     onClick = onLogJournalClick,
                     modifier = Modifier
-                        .weight(1f)
-                        .defaultMinSize(minHeight = 48.dp)
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = 44.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.Notes,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Log Note", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.Notes,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Log Reflection",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
 
                 EInkButton(
                     onClick = onShareClick,
                     modifier = Modifier
-                        .weight(1f)
-                        .defaultMinSize(minHeight = 48.dp)
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = 44.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Share,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Share", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Share,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Share Progress",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
 
-        // Quote of the Day Card
+        // Quote Card
         item {
             QuoteCard(
                 quote = uiState.quoteOfTheDay,
@@ -452,12 +507,12 @@ fun DashboardContent(
             )
         }
 
-        // Milestones Section Header
+        // Milestones Header
         item {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 4.dp, bottom = 2.dp),
+                    .padding(top = 2.dp, bottom = 2.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -467,13 +522,14 @@ fun DashboardContent(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "${uiState.milestones.count { it.isAchieved }} / ${uiState.milestones.size} Completed",
-                    style = MaterialTheme.typography.labelMedium
+                    text = "${uiState.milestones.count { it.isAchieved }} / ${uiState.milestones.size} Done",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
 
-        // Milestone List Items
+        // Milestone Cards
         items(uiState.milestones) { milestone ->
             MilestoneCard(milestone = milestone)
         }
@@ -491,35 +547,67 @@ fun ElapsedCounterView(duration: SobrietyDuration) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "TIME SOBER",
+                text = "SOBRIETY DURATION",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outline,
-                fontWeight = FontWeight.Bold
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Bold,
+                fontSize = 10.sp
             )
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Main Total Days Display
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        width = 1.5.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .background(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .padding(vertical = 10.dp, horizontal = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "${duration.totalDays}",
+                        style = MaterialTheme.typography.displayMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Text(
+                        text = if (duration.totalDays == 1L) "TOTAL DAY SOBER" else "TOTAL DAYS SOBER",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(6.dp))
 
+            // Years, Months, Days breakdown
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 CounterUnitBox(
+                    value = duration.years.toString(),
+                    label = "YEARS",
+                    modifier = Modifier.weight(1f)
+                )
+                CounterUnitBox(
+                    value = duration.months.toString(),
+                    label = "MONTHS",
+                    modifier = Modifier.weight(1f)
+                )
+                CounterUnitBox(
                     value = duration.days.toString(),
                     label = "DAYS",
-                    modifier = Modifier.weight(1f)
-                )
-                CounterUnitBox(
-                    value = duration.hours.toString().padStart(2, '0'),
-                    label = "HOURS",
-                    modifier = Modifier.weight(1f)
-                )
-                CounterUnitBox(
-                    value = duration.minutes.toString().padStart(2, '0'),
-                    label = "MINS",
-                    modifier = Modifier.weight(1f)
-                )
-                CounterUnitBox(
-                    value = duration.seconds.toString().padStart(2, '0'),
-                    label = "SECS",
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -532,13 +620,13 @@ fun CounterUnitBox(value: String, label: String, modifier: Modifier = Modifier) 
     Box(
         modifier = modifier
             .border(
-                width = 1.5.dp,
+                width = 1.dp,
                 color = MaterialTheme.colorScheme.outline,
-                shape = RoundedCornerShape(4.dp)
+                shape = RoundedCornerShape(6.dp)
             )
             .background(
                 color = MaterialTheme.colorScheme.surfaceVariant,
-                shape = RoundedCornerShape(4.dp)
+                shape = RoundedCornerShape(6.dp)
             )
             .padding(horizontal = 4.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center
@@ -546,7 +634,7 @@ fun CounterUnitBox(value: String, label: String, modifier: Modifier = Modifier) 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = value,
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -555,7 +643,8 @@ fun CounterUnitBox(value: String, label: String, modifier: Modifier = Modifier) 
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
-                fontSize = 9.sp
+                fontSize = 9.sp,
+                maxLines = 1
             )
         }
     }
@@ -578,22 +667,23 @@ fun QuoteCard(
             Text(
                 text = "QUOTE OF THE DAY",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outline,
-                fontWeight = FontWeight.Bold
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Bold,
+                fontSize = 9.sp
             )
             IconButton(
                 onClick = onCycleQuote,
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier.size(32.dp)
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Autorenew,
                     contentDescription = "Cycle Quote",
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(2.dp))
 
         if (quote != null) {
             Text(
@@ -601,12 +691,13 @@ fun QuoteCard(
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = "— ${quote.author}",
                 style = MaterialTheme.typography.labelMedium,
                 textAlign = TextAlign.End,
                 fontWeight = FontWeight.Bold,
+                color = AmberMilestone,
                 modifier = Modifier.fillMaxWidth()
             )
         } else {
@@ -621,64 +712,68 @@ fun QuoteCard(
 
 @Composable
 fun MilestoneCard(milestone: Milestone) {
-    val borderColor = if (milestone.isAchieved) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+    val borderColor = if (milestone.isAchieved) AmberMilestone else MaterialTheme.colorScheme.outline
     val backgroundColor = if (milestone.isAchieved) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .border(
-                width = if (milestone.isAchieved) 2.dp else 1.5.dp,
+                width = if (milestone.isAchieved) 1.5.dp else 1.dp,
                 color = borderColor,
-                shape = RoundedCornerShape(6.dp)
+                shape = RoundedCornerShape(8.dp)
             )
             .background(
                 color = backgroundColor,
-                shape = RoundedCornerShape(6.dp)
+                shape = RoundedCornerShape(8.dp)
             )
-            .padding(10.dp)
+            .padding(8.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
-                shape = RoundedCornerShape(4.dp),
-                color = if (milestone.isAchieved) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-                border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline),
-                modifier = Modifier.size(32.dp)
+                shape = RoundedCornerShape(6.dp),
+                color = if (milestone.isAchieved) AmberMilestone else MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = if (milestone.isAchieved) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface,
+                border = BorderStroke(1.dp, if (milestone.isAchieved) AmberMilestone else MaterialTheme.colorScheme.outline),
+                modifier = Modifier.size(28.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     if (milestone.isAchieved) {
                         Icon(
                             imageVector = Icons.Rounded.Check,
                             contentDescription = "Completed",
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     } else {
                         Text(
                             text = "${(milestone.progressPercentage * 100).toInt()}%",
                             style = MaterialTheme.typography.labelSmall,
-                            fontSize = 9.sp,
+                            fontSize = 8.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(8.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = milestone.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = milestone.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
 
                 if (!milestone.isAchieved) {
@@ -687,7 +782,7 @@ fun MilestoneCard(milestone: Milestone) {
                         progress = { milestone.progressPercentage },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(6.dp)
+                            .height(5.dp)
                             .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(3.dp)),
                         color = MaterialTheme.colorScheme.primary,
                         trackColor = MaterialTheme.colorScheme.surface
@@ -706,9 +801,9 @@ fun LogJournalQuickDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Log Daily Note", fontWeight = FontWeight.Bold) },
+        title = { Text("Log Reflection", fontWeight = FontWeight.Bold) },
         text = {
-            Text("Create a reflection entry for '$substanceName'.")
+            Text("Create a journal entry for '$substanceName'.")
         },
         confirmButton = {
             EInkButton(onClick = onConfirm) {
@@ -721,16 +816,16 @@ fun LogJournalQuickDialog(
             }
         },
         containerColor = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(6.dp)
+        shape = RoundedCornerShape(8.dp)
     )
 }
 
 private fun shareMilestone(context: Context, uiState: DashboardUiState) {
     val substanceName = uiState.activeSubstance?.name ?: "Sobriety"
-    val days = uiState.sobrietyDuration.days
+    val days = uiState.sobrietyDuration.totalDays
     val quoteText = uiState.quoteOfTheDay?.quoteText ?: "One day at a time."
 
-    val shareText = "I have been sober from $substanceName for $days days! \"$quoteText\" - Shared via inkSober"
+    val shareText = "I have been sober from $substanceName for $days days! \"$quoteText\" - Shared via SoberSide"
 
     val sendIntent: Intent = Intent().apply {
         action = Intent.ACTION_SEND
@@ -748,11 +843,11 @@ fun DashboardPreview() {
         DashboardContent(
             uiState = DashboardUiState(
                 activeSubstance = SubstanceEntity(name = "Alcohol", startDateMillis = System.currentTimeMillis() - 86400000L * 30),
-                sobrietyDuration = SobrietyDuration(days = 30, hours = 4, minutes = 12, seconds = 45),
+                sobrietyDuration = SobrietyDuration(days = 0, months = 1, years = 0, totalDays = 30),
                 milestones = listOf(
-                    Milestone("24 Hours", 1, true, description = "Achieved 24 Hours sober"),
+                    Milestone("1 Day", 1, true, description = "Achieved 1 Day sober"),
                     Milestone("1 Week", 7, true, description = "Achieved 1 Week sober"),
-                    Milestone("30 Days", 30, true, description = "Achieved 30 Days sober"),
+                    Milestone("1 Month", 30, true, description = "Achieved 1 Month sober"),
                     Milestone("90 Days", 90, false, progressPercentage = 0.33f, description = "30 / 90 days completed")
                 ),
                 quoteOfTheDay = RecoveryQuoteEntity(quoteText = "One day at a time.", author = "AA Literature")
